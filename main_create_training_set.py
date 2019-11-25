@@ -14,7 +14,7 @@ from shutil import copyfile
 
 DATASET_SIZE = 5011
 
-dataset_path = os.sep.join(['data', 'VOCDevkit2007', 'VOC2007'])
+dataset_path = os.sep.join(['data', 'VOCdevkit2007', 'VOC2007'])
 images_path = os.sep.join([dataset_path, 'JPEGImages'])
 image_annotation_path = os.sep.join([dataset_path, 'Annotations'])
 
@@ -42,12 +42,16 @@ def generate_seg_img_map():
     return map
 
 
-def random_seg_idx():
-    return randint(0, len(seg_index)-1)
-
+def random_seg_idx(min, max):
+    # return randint(0, len(seg_index)-1)
+    return randint(min, max+1)
 
 def random_obj_idx(s):
-    return randint(1, len(s)-2)
+    length = len(s)
+    if  length <= 2:
+        return randint(1, 1)
+    else:
+        return randint(1, length-2)
 
 
 def random_obj_loc(img_h, img_w, obj_h, obj_w):
@@ -84,12 +88,17 @@ def modify_xml(filename, savefile, xmin, ymin, xmax, ymax):
 
 if __name__ == '__main__':
     map = generate_seg_img_map()
+    key_list = list(map.keys())
+    min_key = min(key_list)
+    max_key = max(key_list)
     count = 0
     while count < DATASET_SIZE:
         if count % 100 == 0:
             print('>>> %d / %d' % (count, DATASET_SIZE))
         img_idx = count % len(image_index)
-        seg_idx = random_seg_idx()
+        seg_idx = random_seg_idx(min_key, max_key)
+        if seg_idx not in map.keys():
+            continue
         img = Image.open(imdb.image_path_at(img_idx))   # base img
         seg = Image.open(imdb.seg_path_at(seg_idx)).convert('P')    # add-on object seg img picked randomly
         seg_img = Image.open(imdb.image_path_at(map[seg_idx]))  # corresponding add-on object original img
@@ -103,7 +112,9 @@ if __name__ == '__main__':
                 (max_x - min_x) * (max_y - min_y) > img.size[0] * img.size[1] * 0.3 or \
                 max_x - min_x >= img.size[0] or max_y - min_y >= img.size[1] or loop_counter > 1000:
             loop_counter += 1
-            seg_idx = random_seg_idx()
+            seg_idx = random_seg_idx(min_key, max_key)
+            if seg_idx not in map.keys():
+                continue
             seg = Image.open(imdb.seg_path_at(seg_idx)).convert('P')
             seg_img = Image.open(imdb.image_path_at(map[seg_idx]))
             seg_np = np.asarray(seg)
